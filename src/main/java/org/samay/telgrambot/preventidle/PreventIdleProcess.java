@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class PreventIdleProcess {
 
-	@Scheduled(cron = "*/30 * * * * ?")
+	//@Scheduled(cron = "*/30 * * * * ?")
 	public void run() {
 		System.out.println("Current time is :: " + Calendar.getInstance().getTime());
 	}
