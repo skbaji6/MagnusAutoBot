@@ -1,6 +1,8 @@
 package org.samay.telgrambot.bot;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 
@@ -41,62 +43,60 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 			Document document = update.getMessage().getDocument();
 			SendDocument sdocument = new SendDocument().setChatId("@megadlbot").setDocument(document.getFileId());
 			try {
-				
+
 				execute(sdocument);
 			} catch (TelegramApiException e) {
 				e.printStackTrace();
 			}
 		}
-		
-	 if (update.hasMessage() && update.getMessage().hasPhoto()) {
-		    // Message contains photo
-		    // Set variables
-		    long chat_id = update.getMessage().getChatId();
 
-		    // Array with photo objects with different sizes
-		    // We will get the biggest photo from that array
-		    List<PhotoSize> photos = update.getMessage().getPhoto();
-		    // Know file_id
-		    String f_id = photos.stream()
-		                    .sorted(Comparator.comparing(PhotoSize::getFileSize).reversed())
-		                    .findFirst()
-		                    .orElse(null).getFileId();
-		    // Know photo width
-		    int f_width = photos.stream()
-		                    .sorted(Comparator.comparing(PhotoSize::getFileSize).reversed())
-		                    .findFirst()
-		                    .orElse(null).getWidth();
-		    // Know photo height
-		    int f_height = photos.stream()
-		                    .sorted(Comparator.comparing(PhotoSize::getFileSize).reversed())
-		                    .findFirst()
-		                    .orElse(null).getHeight();
-		    int watermarkScale=f_height/4;
-		    
-		    
-		    TelegramFileDownloader filedownloader=new TelegramFileDownloader(()->getBotToken());
-		    File downloadedfile;
+		if (update.hasMessage() && update.getMessage().hasPhoto()) {
+			// Message contains photo
+			// Set variables
+			long chat_id = update.getMessage().getChatId();
+
+			// Array with photo objects with different sizes
+			// We will get the biggest photo from that array
+			List<PhotoSize> photos = update.getMessage().getPhoto();
+			// Know file_id
+			String f_id = photos.stream().sorted(Comparator.comparing(PhotoSize::getFileSize).reversed()).findFirst()
+					.orElse(null).getFileId();
+			// Know photo width
+			int f_width = photos.stream().sorted(Comparator.comparing(PhotoSize::getFileSize).reversed()).findFirst()
+					.orElse(null).getWidth();
+			// Know photo height
+			int f_height = photos.stream().sorted(Comparator.comparing(PhotoSize::getFileSize).reversed()).findFirst()
+					.orElse(null).getHeight();
+			int watermarkScale = f_height / 4;
+
+			TelegramFileDownloader filedownloader = new TelegramFileDownloader(() -> getBotToken());
+			File downloadedfile;
 			try {
-				GetFile getFile= new GetFile().setFileId(f_id);
-				org.telegram.telegrambots.meta.api.objects.File file=execute(getFile);
-				System.out.println("FilePath: "+file.getFilePath());
-				
-				
+				GetFile getFile = new GetFile().setFileId(f_id);
+				org.telegram.telegrambots.meta.api.objects.File file = execute(getFile);
+				System.out.println("FilePath: " + file.getFilePath());
+
 				downloadedfile = filedownloader.downloadFile(file.getFilePath());
-				String watermarkAppliedImageLocation=imageWaterMarker.applyWaterMark(watermarkScale,downloadedfile,f_id);
-			
-		    // Set photo caption
-		    String caption = "file_id: " + f_id + "\nwidth: " + Integer.toString(f_width) + "\nheight: " + Integer.toString(f_height);
-		    System.out.println(caption);
-		    SendPhoto msg = new SendPhoto()
-		                    .setChatId(chat_id)
-		                    .setPhoto(new InputFile(new File(watermarkAppliedImageLocation), "@movieztrends_photo"))
-		                    .setCaption("@movieztrends");
-		   
-		        execute(msg); // Call method to send the photo with caption
-		    } catch (TelegramApiException e) {
-		        e.printStackTrace();
-		    }
+				String watermarkAppliedImageLocation = imageWaterMarker.applyWaterMark(watermarkScale, downloadedfile,
+						f_id);
+
+				// Set photo caption
+				String caption = "file_id: " + f_id + "\nwidth: " + Integer.toString(f_width) + "\nheight: "
+						+ Integer.toString(f_height);
+				System.out.println(caption);
+				SendPhoto msg = new SendPhoto().setChatId(chat_id)
+						.setPhoto(new InputFile(new File(watermarkAppliedImageLocation), "@movieztrends_photo"))
+						.setCaption("@movieztrends");
+
+				execute(msg); // Call method to send the photo with caption
+				System.out.println("trying to delete Downloaded file Path : "+downloadedfile.toPath());
+				Files.delete(Paths.get(watermarkAppliedImageLocation));
+			} catch (TelegramApiException e) {
+				e.printStackTrace();
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+
 		}
 	}
 
