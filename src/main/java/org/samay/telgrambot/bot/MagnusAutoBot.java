@@ -78,7 +78,9 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 			if(filename.toLowerCase().contains("360")) {
 				quality="360P";
 			}
-			if(filename.toLowerCase().contains("hd")) {
+			if(filename.toLowerCase().contains("hd") && filename.toLowerCase().contains("cam")) {
+				quality="HD-Cam";
+			}else if(filename.toLowerCase().contains("hd")) {
 				quality="Proper HD";
 			}
 			
@@ -104,7 +106,7 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 			}
 			caption+="\n📤 Uploaded : @movieztrends";
 			
-			caption+="\n\n Invite https://t.me/moveztrends";
+			caption+="\n\n Invite https://t.me/movieztrends";
 			
 			String fileType=document.getMimeType();
 			Integer filesize=document.getFileSize();
