@@ -2,3 +2,7 @@ server:
   error:
     whitelabel:
       enabled: false
+
+spring:
+  profiles:
+    active: prod
