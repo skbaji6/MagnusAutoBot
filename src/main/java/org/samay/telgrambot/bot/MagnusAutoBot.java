@@ -36,6 +36,9 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 	@Override
 	public void onUpdateReceived(Update update) {
 		if (update.hasMessage() && update.getMessage().hasText()) {
+			if(update.getMessage().getText().startsWith("/extract")) {
+				extractDetails(update.getMessage().getText().replace("/extract", ""));
+			}
 			SendMessage message = new SendMessage() // Create a SendMessage object with mandatory fields
 					.setChatId(update.getMessage().getChatId())
 					.setText("");
@@ -48,77 +51,11 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 
 		if (update.hasMessage() && update.getMessage().hasDocument()) {
 			Document document = update.getMessage().getDocument();
-			String caption="";
-			String filename=document.getFileName();
-			filename=filename.replaceAll("@movieztrends", "");
-			filename=filename.replaceAll("@","");
-			filename=filename.replaceAll("_"," ");
-			
-			String language="";
-			String quality="";
-			String year="";
-			if(filename.toLowerCase().contains("tel")) {
-				language += "-Telugu";
-			}
-			if(filename.toLowerCase().contains("tam")) {
-				language += "-Tamil";
-			}
-			if(filename.toLowerCase().contains("hin")) {
-				language += "-Hindi";
-			}
-			if(filename.toLowerCase().contains("eng")) {
-				language += "-English";
-			}
-			
-			
-			
-			if(filename.toLowerCase().contains("720")) {
-				quality="720P";
-			}
-			if(filename.toLowerCase().contains("480")) {
-				quality="480P";
-			}
-			if(filename.toLowerCase().contains("360")) {
-				quality="360P";
-			}
-			if(filename.toLowerCase().contains("hd") && filename.toLowerCase().contains("cam")) {
-				quality="HD-Cam";
-			}else if(filename.toLowerCase().contains("hd")) {
-				quality="Proper HD";
-			}
-			
-			if(filename.toLowerCase().contains("blu")) {
-				quality+="-BluRay";
-			}
-			
-			Pattern p = Pattern.compile("((19|20)\\d\\d)");
-	        Matcher m = p.matcher(filename);
-	        
-	        while(m.find()) {
-	           year=m.group();
-	        }
-	        
-	        filename=getFileName(filename);
-	        filename=filename.replaceAll("\\."," ");
-			
-	        caption+="🎬  Title: "+filename;
-			if(!StringUtils.isEmpty(year)) {
-					caption+="\n🎞  Year : " + year;
-			}
-			if(!StringUtils.isEmpty(language)) {
-				caption+="\n🔊 Language : "+language.substring(1);
-			}
-			if(!StringUtils.isEmpty(quality)) {
-				caption+="\n💿 Quality : "+quality;
-			}
-			caption+="\n📤 Uploaded : @movieztrends";
-			
-			caption+="\n\n Invite https://t.me/movieztrends";
-			
+		
 			String fileType=document.getMimeType();
 			Integer filesize=document.getFileSize();
 			SendDocument sdocument = new SendDocument().setChatId(update.getMessage().getChatId()).setDocument(document.getFileId())
-					.setCaption(caption);		
+					.setCaption(extractDetails(document.getFileName()));		
 			try {
 				execute(sdocument);
 			} catch (TelegramApiException e) {
@@ -185,10 +122,79 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 		return botConfig.getToken();
 	}
 	
-	private static String getFileName(String fileName) {
+	private String getFileName(String fileName) {
         if(fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0)
         return fileName.substring(0,fileName.lastIndexOf("."));
         else return "";
     }
+	private String extractDetails(String filename) {
+		String caption="";
+		filename=filename.replaceAll("@movieztrends", "");
+		filename=filename.replaceAll("@","");
+		filename=filename.replaceAll("_"," ");
+		
+		String language="";
+		String quality="";
+		String year="";
+		if(filename.toLowerCase().contains("tel")) {
+			language += "-Telugu";
+		}
+		if(filename.toLowerCase().contains("tam")) {
+			language += "-Tamil";
+		}
+		if(filename.toLowerCase().contains("hin")) {
+			language += "-Hindi";
+		}
+		if(filename.toLowerCase().contains("eng")) {
+			language += "-English";
+		}
+		
+		
+		
+		if(filename.toLowerCase().contains("720")) {
+			quality="720P";
+		}
+		if(filename.toLowerCase().contains("480")) {
+			quality="480P";
+		}
+		if(filename.toLowerCase().contains("360")) {
+			quality="360P";
+		}
+		if(filename.toLowerCase().contains("hd") && filename.toLowerCase().contains("cam")) {
+			quality="HD-Cam";
+		}else if(filename.toLowerCase().contains("hd")) {
+			quality="Proper HD";
+		}
+		
+		if(filename.toLowerCase().contains("blu")) {
+			quality+="-BluRay";
+		}
+		
+		Pattern p = Pattern.compile("((19|20)\\d\\d)");
+        Matcher m = p.matcher(filename);
+        
+        while(m.find()) {
+           year=m.group();
+        }
+        
+        filename=getFileName(filename);
+        filename=filename.replaceAll("\\."," ");
+		
+        caption+="🎬  Title: "+filename;
+		if(!StringUtils.isEmpty(year)) {
+				caption+="\n🎞  Year : " + year;
+		}
+		if(!StringUtils.isEmpty(language)) {
+			caption+="\n🔊 Language : "+language.substring(1);
+		}
+		if(!StringUtils.isEmpty(quality)) {
+			caption+="\n💿 Quality : "+quality;
+		}
+		caption+="\n📤 Uploaded : @movieztrends";
+		
+		caption+="\n\n Invite https://t.me/movieztrends";
+		
+		return caption;
+	}
 
 }
