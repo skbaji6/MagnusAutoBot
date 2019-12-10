@@ -60,6 +60,9 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 			if(filename.toLowerCase().contains("tel")) {
 				language += "-Telugu";
 			}
+			if(filename.toLowerCase().contains("tam")) {
+				language += "-Tamil";
+			}
 			if(filename.toLowerCase().contains("hin")) {
 				language += "-Hindi";
 			}
@@ -82,6 +85,10 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 				quality="HD-Cam";
 			}else if(filename.toLowerCase().contains("hd")) {
 				quality="Proper HD";
+			}
+			
+			if(filename.toLowerCase().contains("blu")) {
+				quality+="-BluRay";
 			}
 			
 			Pattern p = Pattern.compile("((19|20)\\d\\d)");
