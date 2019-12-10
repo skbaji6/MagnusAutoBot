@@ -36,16 +36,20 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 	@Override
 	public void onUpdateReceived(Update update) {
 		if (update.hasMessage() && update.getMessage().hasText()) {
+			String caption="";
 			if(update.getMessage().getText().startsWith("/extract")) {
-				extractDetails(update.getMessage().getText().replace("/extract", ""));
+				caption=extractDetails(update.getMessage().getText().replace("/extract", ""));
 			}
+			if(!StringUtils.isEmpty(caption)) {
 			SendMessage message = new SendMessage() // Create a SendMessage object with mandatory fields
 					.setChatId(update.getMessage().getChatId())
-					.setText("");
+					.setText(caption);
+			
 			try {
 				execute(message); // Call method to send the message
 			} catch (TelegramApiException e) {
 				e.printStackTrace();
+			}
 			}
 		}
 
