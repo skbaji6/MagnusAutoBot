@@ -1,16 +1,21 @@
 package org.samay.telgrambot.bot;
 
 import java.io.File;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.samay.telgrambot.config.BotConfig;
+import org.samay.telgrambot.utils.TelegramUtil;
 import org.samay.telgrambot.watermark.ImageWaterMarker;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -21,45 +26,140 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.Document;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.Video;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 @Component
 public class MagnusAutoBot extends TelegramLongPollingBot {
 	@Autowired
 	private ImageWaterMarker imageWaterMarker;
-	
+
 	@Autowired
 	private BotConfig botConfig;
 
+	@Autowired
+	private TelegramUtil telegramUtil;
+
+	@Autowired
+	private Environment env;
+
 	@Override
 	public void onUpdateReceived(Update update) {
+		// for text messages
 		if (update.hasMessage() && update.getMessage().hasText()) {
-			String caption="";
-			if(update.getMessage().getText().startsWith("/extract")) {
-				caption=extractDetails(update.getMessage().getText().replace("/extract", ""));
+			String caption = "";
+			if (update.getMessage().getText().startsWith("/extract")) {
+				caption = telegramUtil.extractDetails(update.getMessage().getText().replace("/extract", ""));
+			} else if (update.getMessage().getText().startsWith("http")) {
+				try {
+					String[] text = update.getMessage().getText().split("\\|");
+					String fileName = null;
+					URL url = new URL(text[0]);
+					if (text.length == 2) {
+						fileName = text[1].trim();
+					} else {
+						fileName = FilenameUtils.getName(update.getMessage().getText());
+					}
+
+					HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+					urlConnection.setRequestMethod("HEAD");
+					urlConnection.connect();
+					SendMessage message = new SendMessage() // Create a SendMessage object with mandatory fields
+							.setChatId(update.getMessage().getChatId())
+							.setText("File Size detected as " + urlConnection.getContentLength()
+									+ "\nFile will be named : " + fileName
+									+ "\n downloading Started be patience to complete the request");
+					execute(message);
+					File file = new File(fileName);
+					FileUtils.copyURLToFile(url, file);
+					System.out.println("File is Downloaded at " + file.getAbsolutePath());
+					message = new SendMessage() // Create a SendMessage object with mandatory fields
+							.setChatId(update.getMessage().getChatId())
+							.setText("Uploading started");
+					execute(message);
+					
+					SendDocument msg = new SendDocument().setChatId(update.getMessage().getChatId())
+							.setDocument(new InputFile(file,
+									"@movieztrends " + fileName
+											.replaceAll("@", "").replaceAll("movieztrends", "").trim()));
+					execute(msg);
+					if (Arrays.asList(env.getActiveProfiles()).contains("prod")) {
+						Files.delete(Paths.get(file.getAbsolutePath()));
+					} else {
+						System.out.println("File Downloaded Location:" + file.getAbsolutePath());
+					}
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			} else if (update.getMessage().getText().startsWith("/upload")) {
+
+				if (update.getMessage().getReplyToMessage() != null) {
+					Message messagetoUpload = update.getMessage().getReplyToMessage();
+					if (messagetoUpload.hasDocument()) {
+						try {
+							File downloadedFile = telegramUtil.downloadFile(this,
+									messagetoUpload.getDocument().getFileId());
+							SendDocument msg = new SendDocument().setChatId(update.getMessage().getChatId())
+									.setDocument(new InputFile(downloadedFile,
+											"@movieztrends" + messagetoUpload.getDocument().getFileName()
+													.replaceAll("@", "").replaceAll("movieztrends", "").trim()));
+							execute(msg);
+							System.out.println(
+									"trying to delete Downloaded file Path : " + downloadedFile.getAbsolutePath());
+							if (Arrays.asList(env.getActiveProfiles()).contains("prod")) {
+								Files.delete(Paths.get(downloadedFile.getAbsolutePath()));
+							} else {
+								System.out.println("File Downloaded Location:" + downloadedFile.getAbsolutePath());
+							}
+						} catch (TelegramApiException e) {
+							e.printStackTrace();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				}
+				;
 			}
-			if(!StringUtils.isEmpty(caption)) {
-			SendMessage message = new SendMessage() // Create a SendMessage object with mandatory fields
-					.setChatId(update.getMessage().getChatId())
-					.setText(caption);
-			
-			try {
-				execute(message); // Call method to send the message
-			} catch (TelegramApiException e) {
-				e.printStackTrace();
-			}
+			if (!StringUtils.isEmpty(caption)) {
+				SendMessage message = new SendMessage() // Create a SendMessage object with mandatory fields
+						.setChatId(update.getMessage().getChatId()).setText(caption);
+
+				try {
+					execute(message); // Call method to send the message
+				} catch (TelegramApiException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 
+		// for Documents
 		if (update.hasMessage() && update.getMessage().hasDocument()) {
 			Document document = update.getMessage().getDocument();
-		
-			String fileType=document.getMimeType();
-			Integer filesize=document.getFileSize();
-			SendDocument sdocument = new SendDocument().setChatId(update.getMessage().getChatId()).setDocument(document.getFileId())
-					.setCaption(extractDetails(document.getFileName()));		
+
+			String fileType = document.getMimeType();
+			Integer filesize = document.getFileSize();
+			String fileExtension = telegramUtil.getFileExtension(document.getFileName());
+			if ("mkv".equalsIgnoreCase(fileExtension) || "mp4".equalsIgnoreCase(fileExtension)) {
+
+				SendDocument sdocument = new SendDocument().setChatId(update.getMessage().getChatId())
+						.setDocument(document.getFileId())
+						.setCaption(telegramUtil.extractDetails(document.getFileName()));
+				try {
+					execute(sdocument);
+				} catch (TelegramApiException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+		if (update.hasMessage() && update.getMessage().hasVideo()) {
+			Video document = update.getMessage().getVideo();
+
+			SendDocument sdocument = new SendDocument().setChatId(update.getMessage().getChatId())
+					.setDocument(document.getFileId()).setCaption(telegramUtil.extractDetails(document.toString()));
 			try {
 				execute(sdocument);
 			} catch (TelegramApiException e) {
@@ -105,7 +205,7 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 						.setPhoto(new InputFile(new File(watermarkAppliedImageLocation), "@movieztrends_photo"));
 
 				execute(msg); // Call method to send the photo with caption
-				System.out.println("trying to delete Downloaded file Path : "+downloadedfile.toPath());
+				System.out.println("trying to delete Downloaded file Path : " + downloadedfile.toPath());
 				Files.delete(Paths.get(watermarkAppliedImageLocation));
 			} catch (TelegramApiException e) {
 				e.printStackTrace();
@@ -124,81 +224,6 @@ public class MagnusAutoBot extends TelegramLongPollingBot {
 	@Override
 	public String getBotToken() {
 		return botConfig.getToken();
-	}
-	
-	private String getFileName(String fileName) {
-        if(fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0)
-        return fileName.substring(0,fileName.lastIndexOf("."));
-        else return "";
-    }
-	private String extractDetails(String filename) {
-		String caption="";
-		filename=filename.replaceAll("@movieztrends", "");
-		filename=filename.replaceAll("@","");
-		filename=filename.replaceAll("_"," ");
-		
-		String language="";
-		String quality="";
-		String year="";
-		if(filename.toLowerCase().contains("tel")) {
-			language += "-Telugu";
-		}
-		if(filename.toLowerCase().contains("tam")) {
-			language += "-Tamil";
-		}
-		if(filename.toLowerCase().contains("hin")) {
-			language += "-Hindi";
-		}
-		if(filename.toLowerCase().contains("eng")) {
-			language += "-English";
-		}
-		
-		
-		
-		if(filename.toLowerCase().contains("720")) {
-			quality="720P";
-		}
-		if(filename.toLowerCase().contains("480")) {
-			quality="480P";
-		}
-		if(filename.toLowerCase().contains("360")) {
-			quality="360P";
-		}
-		if(filename.toLowerCase().contains("hd") && filename.toLowerCase().contains("cam")) {
-			quality="HD-Cam";
-		}else if(filename.toLowerCase().contains("hd")) {
-			quality="Proper HD";
-		}
-		
-		if(filename.toLowerCase().contains("blu")) {
-			quality+="-BluRay";
-		}
-		
-		Pattern p = Pattern.compile("((19|20)\\d\\d)");
-        Matcher m = p.matcher(filename);
-        
-        while(m.find()) {
-           year=m.group();
-        }
-        
-        filename=getFileName(filename);
-        filename=filename.replaceAll("\\."," ");
-		
-        caption+="🎬  Title: "+filename;
-		if(!StringUtils.isEmpty(year)) {
-				caption+="\n🎞  Year : " + year;
-		}
-		if(!StringUtils.isEmpty(language)) {
-			caption+="\n🔊 Language : "+language.substring(1);
-		}
-		if(!StringUtils.isEmpty(quality)) {
-			caption+="\n💿 Quality : "+quality;
-		}
-		caption+="\n📤 Uploaded : @movieztrends";
-		
-		caption+="\n\n Invite https://t.me/movieztrends";
-		
-		return caption;
 	}
 
 }
