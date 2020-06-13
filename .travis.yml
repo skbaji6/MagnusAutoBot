@@ -9,6 +9,9 @@ sudo: true
 before_install:
   - chmod +x mvnw
   
+install:
+    mvn -s src/test/resources/settings.xml clean -B
+
 script:
 - ./mvnw -s src/test/resources/settings.xml clean install -B
 
