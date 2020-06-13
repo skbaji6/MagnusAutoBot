@@ -4,7 +4,10 @@ jdk:
 - oraclejdk9
 
 # see https://blog.travis-ci.com/2014-12-17-faster-builds-with-container-based-infrastructure
-sudo: false
+sudo: true
+
+before_install:
+  - chmod +x mvnw
 
 # cache the build tool's caches
 cache:
