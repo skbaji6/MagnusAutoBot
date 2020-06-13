@@ -13,7 +13,7 @@ install:
     mvn -s src/test/resources/settings.xml clean -B
 
 script:
-- ./mvnw -s src/test/resources/settings.xml clean install -B
+- ./mvnw -s src/test/resources/settings.xml -DskipTests=true clean install -B
 
 cache:
   directories:
