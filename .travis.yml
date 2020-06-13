@@ -9,8 +9,4 @@ sudo: true
 before_install:
   - chmod +x mvnw
 
-# cache the build tool's caches
-cache:
-  directories:
-  - $HOME/.m2
-  - $HOME/.gradle
+
