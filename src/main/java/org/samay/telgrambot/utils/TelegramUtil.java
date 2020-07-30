@@ -27,7 +27,7 @@ public class TelegramUtil {
 		String language = "";
 		String quality = "";
 		String year = "";
-		if (filename.toLowerCase().contains("tel")) {
+		if (filename.toLowerCase().contains("tel") && !filename.toLowerCase().contains("telly")) {
 			language += "-Telugu";
 		}
 		if (filename.toLowerCase().contains("tam")) {
@@ -89,9 +89,8 @@ public class TelegramUtil {
 		if (!StringUtils.isEmpty(quality)) {
 			caption += "\n💿 Quality : " + quality;
 		}
-		caption += "\n📤 Uploaded : @movieztrends";
 
-		caption += "\n\n Invite https://t.me/movieztrends";
+		caption += "\n\n Invite https://t.me/joinchat/AAAAAElErExrsYLj2BvzKw";
 
 		return caption;
 	}
